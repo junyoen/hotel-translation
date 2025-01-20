@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>호텔 통역 시스템</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-cognitiveservices-speech-sdk/1.31.0/microsoft.cognitiveservices.speech.sdk.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .controls {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .language-select {
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            font-size: 16px;
+            width: 150px;
+        }
+
+        .mic-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .mic-button {
+            padding: 10px 20px;
+            border-radius: 20px;
+            border: none;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .mic-button.staff {
+            background-color: #0066ff;
+        }
+
+        .mic-button.guest {
+            background-color: #00cc66;
+        }
+
+        .mic-button.active {
+            background-color: #ff4444;
+            transform: scale(1.05);
+        }
+
+        .chat-container {
+            flex: 1;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .message {
+            margin-bottom: 20px;
+            max-width: 70%;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message.staff {
+            margin-left: auto;
+        }
+
+        .message-bubble {
+            padding: 15px;
+            border-radius: 10px;
+        }
+
+        .message.staff .message-bubble {
+            background-color: #e6f2ff;
+        }
+
+        .message.guest .message-bubble {
+            background-color: #e6ffe6;
+        }
+
+        .message-time {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .message-original {
+            margin-bottom: 8px;
+            font-size: 16px;
+        }
+
+        .message-translated {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .error-message {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #ffe6e6;
+            color: #cc0000;
+            padding: 10px 20px;
+            border-radius: 5px;
+            display: none;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            z-index: 1000;
+        }
+
+        .display-toggle {
+            padding: 10px 20px;
+            border-radius: 20px;
+            border: none;
+            background-color: #666;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .display-toggle:hover {
+            background-color: #555;
+        }
+
+        #second-display {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: black;
+            color: white;
+            padding: 40px;
+            font-size: 24px;
+            z-index: 2000;
+        }
+
+        .translated-display {
+            background: white;
+            color: black;
+            padding: 20px;
+            border-radius: 10px;
+            height: 100%;
+            overflow-y: auto;
+        }
+
+        .translated-message {
+            margin-bottom: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            background-color: #f5f5f5;
+            font-size: 28px;
+            line-height: 1.4;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="controls">
+            <select id="guestLanguage" class="language-select">
+                <option value="ja">日本語</option>
+                <option value="zh">中文</option>
+                <option value="th">ไทย</option>
+                <option value="en">English</option>
+		<option value="ru">Русский</option>
+		<option value="mn">Монгол</option>
+            </select>
+            <div class="mic-buttons">
+                <button id="staffMic" class="mic-button staff">
+                    🎤 직원
+                </button>
+                <button id="guestMic" class="mic-button guest">
+                    🎤 고객
+                </button>
+                <button id="displayToggle" class="display-toggle">
+                    🖥️ 화면 전환
+                </button>
+            </div>
+        </div>
+        <div id="chatContainer" class="chat-container"></div>
+        <div id="errorMessage" class="error-message"></div>
+    </div>
+
+    <div id="second-display">
+        <div class="translated-display" id="translatedDisplay"></div>
+    </div>
+
+    <script>
+        // 전역 변수 설정
+        let isStaffListening = false;
+        let isGuestListening = false;
+        let staffRecognizer = null;
+        let guestRecognizer = null;
+
+        // Azure Speech SDK 설정
+        const AZURE_KEY = 'ADyOv0TFFVGIJOr6iuYHX4n3O5p3ilakaGcDj0YZR3deqCjIvkllJQQJ99BAACNns7RXJ3w3AAAYACOGoUXq';
+        const AZURE_REGION = 'koreacentral';
+
+        // DOM 요소
+        const staffMicBtn = document.getElementById('staffMic');
+        const guestMicBtn = document.getElementById('guestMic');
+        const languageSelect = document.getElementById('guestLanguage');
+        const chatContainer = document.getElementById('chatContainer');
+        const errorMessage = document.getElementById('errorMessage');
+        const displayToggle = document.getElementById('displayToggle');
+        const secondDisplay = document.getElementById('second-display');
+        const translatedDisplay = document.getElementById('translatedDisplay');
+
+        // 메시지 추가 함수
+        function addMessage(type, original, translated) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type.toLowerCase()}`;
+            
+            const time = new Date().toLocaleTimeString();
+            
+            messageDiv.innerHTML = `
+                <div class="message-bubble">
+                    <div class="message-time">${time}</div>
+                    <div class="message-original">${original}</div>
+                    <div class="message-translated">${translated}</div>
+                </div>
+            `;
+            
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+
+            // 두 번째 디스플레이 업데이트
+            const translatedMessage = document.createElement('div');
+            translatedMessage.className = 'translated-message';
+            translatedMessage.textContent = translated;
+            translatedDisplay.appendChild(translatedMessage);
+            translatedDisplay.scrollTop = translatedDisplay.scrollHeight;
+        }
+
+        // 직원 음성 인식 시작
+        async function startStaffRecognition() {
+            try {
+                const translationConfig = SpeechSDK.SpeechTranslationConfig.fromSubscription(
+                    AZURE_KEY,
+                    AZURE_REGION
+                );
+                
+                translationConfig.speechRecognitionLanguage = 'ko-KR';
+                translationConfig.addTargetLanguage(languageSelect.value);
+                
+                const audioConfig = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
+                staffRecognizer = new SpeechSDK.TranslationRecognizer(translationConfig, audioConfig);
+
+                staffRecognizer.recognized = (s, e) => {
+                    if (e.result.reason === SpeechSDK.ResultReason.RecognizedSpeech) {
+                        const original = e.result.text;
+                        const translated = e.result.translations.get(languageSelect.value);
+                        addMessage('staff', original, translated);
+                    }
+                };
+
+                await staffRecognizer.startContinuousRecognitionAsync();
+                staffMicBtn.classList.add('active');
+                isStaffListening = true;
+            } catch (err) {
+                showError('직원 음성 인식 오류: ' + err.message);
+            }
+        }
+
+        // 고객 음성 인식 시작
+        async function startGuestRecognition() {
+            try {
+                const translationConfig = SpeechSDK.SpeechTranslationConfig.fromSubscription(
+                    AZURE_KEY,
+                    AZURE_REGION
+                );
+                
+                translationConfig.speechRecognitionLanguage = languageSelect.value + '-' + 
+                    getCountryCode(languageSelect.value);
+                translationConfig.addTargetLanguage('ko');
+                
+                const audioConfig = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
+                guestRecognizer = new SpeechSDK.TranslationRecognizer(translationConfig, audioConfig);
+
+                guestRecognizer.recognized = (s, e) => {
+                    if (e.result.reason === SpeechSDK.ResultReason.RecognizedSpeech) {
+                        const original = e.result.text;
+                        const translated = e.result.translations.get('ko');
+                        addMessage('guest', original, translated);
+                    }
+                };
+
+                await guestRecognizer.startContinuousRecognitionAsync();
+                guestMicBtn.classList.add('active');
+                isGuestListening = true;
+            } catch (err) {
+                showError('고객 음성 인식 오류: ' + err.message);
+            }
+        }
+
+        // 국가 코드 가져오기
+        function getCountryCode(language) {
+            const countryMap = {
+                'ja': 'JP',
+                'zh': 'CN',
+                'th': 'TH',
+                'en': 'US'
+		'ru': 'RU',
+		'mn': 'MN'
+            };
+            return countryMap[language] || 'US';
+        }
+
+        // 에러 메시지 표시
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.style.display = 'block';
+            setTimeout(() => {
+                errorMessage.style.display = 'none';
+            }, 5000);
+        }
+
+        // 이벤트 리스너 설정
+        staffMicBtn.addEventListener('click', async () => {
+            if (!isStaffListening) {
+                await startStaffRecognition();
+            } else {
+                await staffRecognizer?.stopContinuousRecognitionAsync();
+                staffMicBtn.classList.remove('active');
+                isStaffListening = false;
+            }
+        });
+
+        guestMicBtn.addEventListener('click', async () => {
+            if (!isGuestListening) {
+                await startGuestRecognition();
+            } else {
+                await guestRecognizer?.stopContinuousRecognitionAsync();
+                guestMicBtn.classList.remove('active');
+                isGuestListening = false;
+            }
+        });
+
+        displayToggle.addEventListener('click', () => {
+            if (secondDisplay.style.display === 'none') {
+                secondDisplay.style.display = 'block';
+            } else {
+                secondDisplay.style.display = 'none';
+            }
+        });
+
+        // 언어 변경 시 인식기 재시작
+        languageSelect.addEventListener('change', async () => {
+            if (isGuestListening) {
+                await guestRecognizer?.stopContinuousRecognitionAsync();
+                guestMicBtn.classList.remove('active');
+                isGuestListening = false;
+                await startGuestRecognition();
+            }
+        });
+
+        // 초기 화면 설정
+        secondDisplay.style.display = 'none';
+    </script>
+</body>
+</html>
