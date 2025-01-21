@@ -283,40 +283,47 @@
         async function startStaffRecognition() {
             try {
                 console.log('직원 음성 인식 시작 시도');
-                
+        
                 // 마이크 권한 요청
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 console.log('마이크 권한 획득 성공');
 
-                const speechConfig = SpeechSDK.SpeechConfig.fromSubscription(AZURE_KEY, AZURE_REGION);
-                console.log('Speech Config 생성 성공');
-
-                speechConfig.speechRecognitionLanguage = 'ko-KR';
-                const audioConfig = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
-                
-                console.log('음성 인식기 생성 시도');
                 const translationConfig = SpeechSDK.SpeechTranslationConfig.fromSubscription(
                     AZURE_KEY,
                     AZURE_REGION
                 );
-                
+        
                 translationConfig.speechRecognitionLanguage = 'ko-KR';
                 translationConfig.addTargetLanguage(languageSelect.value);
-                
+        
+                const audioConfig = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
                 staffRecognizer = new SpeechSDK.TranslationRecognizer(translationConfig, audioConfig);
-                
+
+                staffRecognizer.recognizing = (s, e) => {
+                    console.log('인식 중:', e.result.text);
+                };
+        
                 staffRecognizer.recognized = (s, e) => {
-                    console.log('음성 인식 결과:', e.result.text);
+                    console.log('음성 인식 결과:', e.result);
                     if (e.result.reason === SpeechSDK.ResultReason.TranslatedSpeech) {
                         const original = e.result.text;
                         const translated = e.result.translations.get(languageSelect.value);
+                        console.log('원본:', original);
+                        console.log('번역:', translated);
                         addMessage('staff', original, translated);
+                    }
+                };
+
+                staffRecognizer.canceled = (s, e) => {
+                    console.log('인식 취소됨:', e.errorDetails);
+                    if (e.errorCode === SpeechSDK.CancellationErrorCode.NoError) {
+                        console.log('인식 완료');
                     }
                 };
 
                 await staffRecognizer.startContinuousRecognitionAsync();
                 console.log('음성 인식 시작됨');
-                
+        
                 staffMicBtn.classList.add('active');
                 isStaffListening = true;
             } catch (err) {
