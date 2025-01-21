@@ -410,6 +410,7 @@
                         console.log('고객 음성 인식 시작됨');
                         break; // 성공하면 루프 종료
 
+                    } catch (err) {
                         retryCount++;
                         console.log(`재시도 ${retryCount}/${maxRetries}`);
                         if (retryCount === maxRetries) throw err;
