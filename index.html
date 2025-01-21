@@ -272,14 +272,17 @@
         // 직원 음성 인식 시작
         async function startStaffRecognition() {
             try {
+                // 마이크 권한 먼저 요청
+                await navigator.mediaDevices.getUserMedia({ audio: true });
+    
                 const translationConfig = SpeechSDK.SpeechTranslationConfig.fromSubscription(
                     AZURE_KEY,
                     AZURE_REGION
                 );
-                
+    
                 translationConfig.speechRecognitionLanguage = 'ko-KR';
                 translationConfig.addTargetLanguage(languageSelect.value);
-                
+    
                 const audioConfig = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
                 staffRecognizer = new SpeechSDK.TranslationRecognizer(translationConfig, audioConfig);
 
@@ -302,6 +305,9 @@
         // 고객 음성 인식 시작
         async function startGuestRecognition() {
             try {
+                // 마이크 권한 먼저 요청
+                await navigator.mediaDevices.getUserMedia({ audio: true });
+    
                 const translationConfig = SpeechSDK.SpeechTranslationConfig.fromSubscription(
                     AZURE_KEY,
                     AZURE_REGION
