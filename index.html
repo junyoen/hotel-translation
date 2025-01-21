@@ -199,8 +199,8 @@
                 <option value="zh">中文</option>
                 <option value="th">ไทย</option>
                 <option value="en">English</option>
-		<option value="ru">Русский</option>
-		<option value="mn">Монгол</option>
+                <option value="ru">Русский</option>
+                <option value="mn">Монгол</option>
             </select>
             <div class="mic-buttons">
                 <button id="staffMic" class="mic-button staff">
@@ -230,7 +230,7 @@
         let guestRecognizer = null;
 
         // Azure Speech SDK 설정
-        const AZURE_KEY = "ADyOv0TFFVGIJOr6iuYHX4n3O5p3ilakaGcDj0YZR3deqCjIvkllJQQJ99BAACNns7RXJ3w3AAAYACOGoUXq";
+        const AZURE_KEY = "ADyOv0TFFVGIJOr6iuYHX4n3O5p3ilakaGcDj0YZR3deqCjlvkIIJQQJ99BAACNns7RXJ3w3AAAYACOGoUXq";
         const AZURE_REGION = "koreacentral";
 
         // DOM 요소
@@ -242,6 +242,16 @@
         const displayToggle = document.getElementById('displayToggle');
         const secondDisplay = document.getElementById('second-display');
         const translatedDisplay = document.getElementById('translatedDisplay');
+
+        // 페이지 로드 시 Speech SDK 초기화 확인
+        window.onload = function() {
+            if (!window.SpeechSDK) {
+                console.error('Speech SDK가 로드되지 않았습니다.');
+                showError('Speech SDK 초기화 실패');
+                return;
+            }
+            console.log('Speech SDK 초기화 성공');
+        }
 
         // 메시지 추가 함수
         function addMessage(type, original, translated) {
@@ -272,22 +282,32 @@
         // 직원 음성 인식 시작
         async function startStaffRecognition() {
             try {
-                // 마이크 권한 먼저 요청
-                await navigator.mediaDevices.getUserMedia({ audio: true });
-    
+                console.log('직원 음성 인식 시작 시도');
+                
+                // 마이크 권한 요청
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                console.log('마이크 권한 획득 성공');
+
+                const speechConfig = SpeechSDK.SpeechConfig.fromSubscription(AZURE_KEY, AZURE_REGION);
+                console.log('Speech Config 생성 성공');
+
+                speechConfig.speechRecognitionLanguage = 'ko-KR';
+                const audioConfig = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
+                
+                console.log('음성 인식기 생성 시도');
                 const translationConfig = SpeechSDK.SpeechTranslationConfig.fromSubscription(
                     AZURE_KEY,
                     AZURE_REGION
                 );
-    
+                
                 translationConfig.speechRecognitionLanguage = 'ko-KR';
                 translationConfig.addTargetLanguage(languageSelect.value);
-    
-                const audioConfig = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
+                
                 staffRecognizer = new SpeechSDK.TranslationRecognizer(translationConfig, audioConfig);
-
+                
                 staffRecognizer.recognized = (s, e) => {
-                    if (e.result.reason === SpeechSDK.ResultReason.RecognizedSpeech) {
+                    console.log('음성 인식 결과:', e.result.text);
+                    if (e.result.reason === SpeechSDK.ResultReason.TranslatedSpeech) {
                         const original = e.result.text;
                         const translated = e.result.translations.get(languageSelect.value);
                         addMessage('staff', original, translated);
@@ -295,19 +315,25 @@
                 };
 
                 await staffRecognizer.startContinuousRecognitionAsync();
+                console.log('음성 인식 시작됨');
+                
                 staffMicBtn.classList.add('active');
                 isStaffListening = true;
             } catch (err) {
-                showError('직원 음성 인식 오류: ' + err.message);
+                console.error('음성 인식 초기화 오류:', err);
+                showError('음성 인식 오류: ' + err.message);
             }
         }
 
         // 고객 음성 인식 시작
         async function startGuestRecognition() {
             try {
-                // 마이크 권한 먼저 요청
-                await navigator.mediaDevices.getUserMedia({ audio: true });
-    
+                console.log('고객 음성 인식 시작 시도');
+
+                // 마이크 권한 요청
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                console.log('마이크 권한 획득 성공');
+
                 const translationConfig = SpeechSDK.SpeechTranslationConfig.fromSubscription(
                     AZURE_KEY,
                     AZURE_REGION
@@ -321,7 +347,8 @@
                 guestRecognizer = new SpeechSDK.TranslationRecognizer(translationConfig, audioConfig);
 
                 guestRecognizer.recognized = (s, e) => {
-                    if (e.result.reason === SpeechSDK.ResultReason.RecognizedSpeech) {
+                    console.log('고객 음성 인식 결과:', e.result.text);
+                    if (e.result.reason === SpeechSDK.ResultReason.TranslatedSpeech) {
                         const original = e.result.text;
                         const translated = e.result.translations.get('ko');
                         addMessage('guest', original, translated);
@@ -329,9 +356,12 @@
                 };
 
                 await guestRecognizer.startContinuousRecognitionAsync();
+                console.log('고객 음성 인식 시작됨');
+                
                 guestMicBtn.classList.add('active');
                 isGuestListening = true;
             } catch (err) {
+                console.error('고객 음성 인식 초기화 오류:', err);
                 showError('고객 음성 인식 오류: ' + err.message);
             }
         }
@@ -342,9 +372,9 @@
                 'ja': 'JP',
                 'zh': 'CN',
                 'th': 'TH',
-                'en': 'US'
-		        'ru': 'RU',
-		        'mn': 'MN'
+                'en': 'US',
+                'ru': 'RU',
+                'mn': 'MN'
             };
             return countryMap[language] || 'US';
         }
@@ -399,6 +429,7 @@
 
         // 초기 화면 설정
         secondDisplay.style.display = 'none';
+
     </script>
 </body>
 </html>
