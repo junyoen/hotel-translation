@@ -282,48 +282,68 @@
         // 직원 음성 인식 시작
         async function startStaffRecognition() {
             try {
-                console.log('직원 음성 인식 시작 시도');
-        
-                // 마이크 권한 요청
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                console.log('마이크 권한 획득 성공');
+                let retryCount = 0;
+                const maxRetries = 3;
 
-                const translationConfig = SpeechSDK.SpeechTranslationConfig.fromSubscription(
-                    AZURE_KEY,
-                    AZURE_REGION
-                );
-        
-                translationConfig.speechRecognitionLanguage = 'ko-KR';
-                translationConfig.addTargetLanguage(languageSelect.value);
-        
-                const audioConfig = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
-                staffRecognizer = new SpeechSDK.TranslationRecognizer(translationConfig, audioConfig);
+                while (retryCount < maxRetries) {
+                    try {
+                        console.log('직원 음성 인식 시작 시도');
+                        
+                        // 마이크 권한 요청
+                        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                        console.log('마이크 권한 획득 성공');
 
-                staffRecognizer.recognizing = (s, e) => {
-                    console.log('인식 중:', e.result.text);
-                };
-        
-                staffRecognizer.recognized = (s, e) => {
-                    console.log('음성 인식 결과:', e.result);
-                    if (e.result.reason === SpeechSDK.ResultReason.TranslatedSpeech) {
-                        const original = e.result.text;
-                        const translated = e.result.translations.get(languageSelect.value);
-                        console.log('원본:', original);
-                        console.log('번역:', translated);
-                        addMessage('staff', original, translated);
+                        const translationConfig = SpeechSDK.SpeechTranslationConfig.fromSubscription(
+                            AZURE_KEY,
+                            AZURE_REGION
+                        );
+
+                        // 추가 설정
+                        translationConfig.setProperty("SPEECH-ConnectionTimeoutInSeconds", "20");
+                        translationConfig.setProperty("SPEECH-TranslationTimeoutInSeconds", "20");
+                        translationConfig.setServiceProperty("apiversion", "2023-10-15", 
+                            SpeechSDK.ServicePropertyChannel.UriQueryParameter);
+                        
+                        translationConfig.speechRecognitionLanguage = 'ko-KR';
+                        translationConfig.addTargetLanguage(languageSelect.value);
+                        
+                        const audioConfig = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
+                        staffRecognizer = new SpeechSDK.TranslationRecognizer(translationConfig, audioConfig);
+
+                        staffRecognizer.recognizing = (s, e) => {
+                            console.log('인식 중:', e.result.text);
+                        };
+                        
+                        staffRecognizer.recognized = (s, e) => {
+                            console.log('음성 인식 결과:', e.result);
+                            if (e.result.reason === SpeechSDK.ResultReason.TranslatedSpeech) {
+                                const original = e.result.text;
+                                const translated = e.result.translations.get(languageSelect.value);
+                                console.log('원본:', original);
+                                console.log('번역:', translated);
+                                addMessage('staff', original, translated);
+                            }
+                        };
+
+                        staffRecognizer.canceled = (s, e) => {
+                            console.log('인식 취소됨:', e.errorDetails);
+                            if (e.errorCode === SpeechSDK.CancellationErrorCode.NoError) {
+                                console.log('인식 완료');
+                            }
+                        };
+
+                        await staffRecognizer.startContinuousRecognitionAsync();
+                        console.log('음성 인식 시작됨');
+                        break; // 성공하면 루프 종료
+
+                    } catch (err) {
+                        retryCount++;
+                        console.log(`재시도 ${retryCount}/${maxRetries}`);
+                        if (retryCount === maxRetries) throw err;
+                        await new Promise(resolve => setTimeout(resolve, 1000)); // 1초 대기
                     }
-                };
-
-                staffRecognizer.canceled = (s, e) => {
-                    console.log('인식 취소됨:', e.errorDetails);
-                    if (e.errorCode === SpeechSDK.CancellationErrorCode.NoError) {
-                        console.log('인식 완료');
-                    }
-                };
-
-                await staffRecognizer.startContinuousRecognitionAsync();
-                console.log('음성 인식 시작됨');
-        
+                }
+                
                 staffMicBtn.classList.add('active');
                 isStaffListening = true;
             } catch (err) {
@@ -335,35 +355,67 @@
         // 고객 음성 인식 시작
         async function startGuestRecognition() {
             try {
-                console.log('고객 음성 인식 시작 시도');
+                let retryCount = 0;
+                const maxRetries = 3;
 
-                // 마이크 권한 요청
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                console.log('마이크 권한 획득 성공');
+                while (retryCount < maxRetries) {
+                    try {
+                        console.log('고객 음성 인식 시작 시도');
 
-                const translationConfig = SpeechSDK.SpeechTranslationConfig.fromSubscription(
-                    AZURE_KEY,
-                    AZURE_REGION
-                );
-                
-                translationConfig.speechRecognitionLanguage = languageSelect.value + '-' + 
-                    getCountryCode(languageSelect.value);
-                translationConfig.addTargetLanguage('ko');
-                
-                const audioConfig = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
-                guestRecognizer = new SpeechSDK.TranslationRecognizer(translationConfig, audioConfig);
+                        // 마이크 권한 요청
+                        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                        console.log('마이크 권한 획득 성공');
 
-                guestRecognizer.recognized = (s, e) => {
-                    console.log('고객 음성 인식 결과:', e.result.text);
-                    if (e.result.reason === SpeechSDK.ResultReason.TranslatedSpeech) {
-                        const original = e.result.text;
-                        const translated = e.result.translations.get('ko');
-                        addMessage('guest', original, translated);
+                        const translationConfig = SpeechSDK.SpeechTranslationConfig.fromSubscription(
+                            AZURE_KEY,
+                            AZURE_REGION
+                        );
+
+                        // 추가 설정
+                        translationConfig.setProperty("SPEECH-ConnectionTimeoutInSeconds", "20");
+                        translationConfig.setProperty("SPEECH-TranslationTimeoutInSeconds", "20");
+                        translationConfig.setServiceProperty("apiversion", "2023-10-15", 
+                            SpeechSDK.ServicePropertyChannel.UriQueryParameter);
+                        
+                        translationConfig.speechRecognitionLanguage = languageSelect.value + '-' + 
+                            getCountryCode(languageSelect.value);
+                        translationConfig.addTargetLanguage('ko');
+                        
+                        const audioConfig = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
+                        guestRecognizer = new SpeechSDK.TranslationRecognizer(translationConfig, audioConfig);
+
+                        guestRecognizer.recognizing = (s, e) => {
+                            console.log('인식 중:', e.result.text);
+                        };
+
+                        guestRecognizer.recognized = (s, e) => {
+                            console.log('고객 음성 인식 결과:', e.result);
+                            if (e.result.reason === SpeechSDK.ResultReason.TranslatedSpeech) {
+                                const original = e.result.text;
+                                const translated = e.result.translations.get('ko');
+                                console.log('원본:', original);
+                                console.log('번역:', translated);
+                                addMessage('guest', original, translated);
+                            }
+                        };
+
+                        guestRecognizer.canceled = (s, e) => {
+                            console.log('인식 취소됨:', e.errorDetails);
+                            if (e.errorCode === SpeechSDK.CancellationErrorCode.NoError) {
+                                console.log('인식 완료');
+                            }
+                        };
+
+                        await guestRecognizer.startContinuousRecognitionAsync();
+                        console.log('고객 음성 인식 시작됨');
+                        break; // 성공하면 루프 종료
+
+                        retryCount++;
+                        console.log(`재시도 ${retryCount}/${maxRetries}`);
+                        if (retryCount === maxRetries) throw err;
+                        await new Promise(resolve => setTimeout(resolve, 1000)); // 1초 대기
                     }
-                };
-
-                await guestRecognizer.startContinuousRecognitionAsync();
-                console.log('고객 음성 인식 시작됨');
+                }
                 
                 guestMicBtn.classList.add('active');
                 isGuestListening = true;
@@ -436,7 +488,6 @@
 
         // 초기 화면 설정
         secondDisplay.style.display = 'none';
-
     </script>
 </body>
 </html>
