@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>황평항 호텔 통역 시스템</title>
+    <title>양방향향 호텔 통역 시스템</title>
     <script src="https://cdn.jsdelivr.net/npm/microsoft-cognitiveservices-speech-sdk@1.31.0/distrib/browser/microsoft.cognitiveservices.speech.sdk.bundle.js"></script>
     <style>
         * {
@@ -250,11 +250,20 @@
             );
 
             // 추가 보안 및 연결 설정
-            speechConfig.setProperty("SPEECH-SecurityProtocol", "TLS12");
-            speechConfig.setProperty("SPEECH-ConnectionTimeoutInSeconds", "20");
-            speechConfig.setProperty("SPEECH-TranslationTimeoutInSeconds", "20");
-            speechConfig.setServiceProperty("apiversion", "2023-10-15", 
-                SpeechSDK.ServicePropertyChannel.UriQueryParameter);
+            speechConfig.setProperty("SPEECH-ServiceConnectionStartTime", Date.now().toString());
+            speechConfig.setProperty("SPEECH-SecurityToken", AZURE_KEY);
+
+            // 연결 재시도 설정
+            speechConfig.setProperty("SPEECH-RetryCount", "3");
+            speechConfig.setProperty("SPEECH-RetryIntervalInMilliseconds", "500");
+
+            // 타임아웃 설정
+            speechConfig.setProperty("SPEECH-ConnectionTimeoutInSeconds", "30");
+            speechConfig.setProperty("SPEECH-TranslationTimeoutInSeconds", "30");
+
+            // 프로토콜 및 호스트 설정
+            speechConfig.setProperty("SPEECH-TranslationEndpointHostName", 
+                '${AZURE_REGION}.api.cognitive.microsoft.com');
 
             return speechConfig;
         }
