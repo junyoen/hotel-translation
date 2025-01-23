@@ -201,6 +201,7 @@
                 <option value="en">English</option>
                 <option value="ru">Русский</option>
                 <option value="mn">Монгол</option>
+                <option value="vi">Tiếng Việt</option>
             </select>
             <div class="mic-buttons">
                 <button id="staffMic" class="mic-button staff">
@@ -228,6 +229,11 @@
         // Azure Speech SDK 설정
         const AZURE_KEY = "CWvn2DcbqROlB5iMZ6ryaTGpF8CUIN02f0qchrGm4KmIWoA619GBJQQJ99BAAC3pKaRXJ3w3AAAYACOG0r1C";
         const AZURE_REGION = "eastasia";
+
+        // 타이머 설정 추가
+        const RECORDING_TIMEOUT = 120000; // 2분
+        let staffTimer = null;
+        let guestTimer = null;
 
         // DOM 요소
         const staffMicBtn = document.getElementById('staffMic');
@@ -400,7 +406,8 @@
                 'th': 'TH',
                 'en': 'US',
                 'ru': 'RU',
-                'mn': 'MN'
+                'mn': 'MN',
+                'vi': 'VN'
             };
             return countryMap[language] || 'US';
         }
@@ -418,7 +425,19 @@
         staffMicBtn.addEventListener('click', async () => {
             if (!isStaffListening) {
                 await startStaffRecognition();
+                // 타이머 시작
+                staffTimer = setTimeout(async () => {
+                    if (staffRecognizer) {
+                        await staffRecognizer.stopContinuousRecognitionAsync();
+                        staffRecognizer.close();
+                        staffRecognizer = null;
+                    }
+                    staffMicBtn.classList.remove('active');
+                    isStaffListening = false;
+                    showError('3분이 경과하여 자동으로 종료되었습니다.');
+                }, RECORDING_TIMEOUT);
             } else {
+                clearTimeout(staffTimer);
                 if (staffRecognizer) {
                     await staffRecognizer.stopContinuousRecognitionAsync();
                     staffRecognizer.close();
@@ -432,7 +451,19 @@
         guestMicBtn.addEventListener('click', async () => {
             if (!isGuestListening) {
                 await startGuestRecognition();
+                // 타이머 시작
+                guestTimer = setTimeout(async () => {
+                    if (guestRecognizer) {
+                        await guestRecognizer.stopContinuousRecognitionAsync();
+                        guestRecognizer.close();
+                        guestRecognizer = null;
+                    }
+                    guestMicBtn.classList.remove('active');
+                    isGuestListening = false;
+                    showError('3분이 경과하여 자동으로 종료되었습니다.');
+                }, RECORDING_TIMEOUT);
             } else {
+                clearTimeout(guestTimer);
                 if (guestRecognizer) {
                     await guestRecognizer.stopContinuousRecognitionAsync();
                     guestRecognizer.close();
