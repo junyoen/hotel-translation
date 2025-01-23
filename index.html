@@ -304,12 +304,16 @@
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 console.log('마이크 권한 획득 성공');
 
-                const speechConfig = createSpeechConfig();
-                speechConfig.speechRecognitionLanguage = 'ko-KR';
-                speechConfig.addTargetLanguage(languageSelect.value);
+                const translationConfig = SpeechSDK.SpeechTranslationConfig.fromSubscription(
+                    AZURE_KEY
+                    AZURE_REGION
+                );
+
+                translationConfig.speechRecognitionLanguage = 'ko-KR';
+                translationConfig.addTargetLanguage(languageSelect.value);
                 
                 const audioConfig = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
-                staffRecognizer = new SpeechSDK.TranslationRecognizer(speechConfig, audioConfig);
+                staffRecognizer = new SpeechSDK.TranslationRecognizer(translationConfig, audioConfig);
 
                 staffRecognizer.recognizing = (s, e) => {
                     console.log('인식 중:', e.result.text);
