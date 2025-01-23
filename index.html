@@ -423,11 +423,11 @@
         staffMicBtn.addEventListener('click', async () => {
             if (!isStaffListening) {
                 await startStaffRecognition();
-                // 타이머 시작
                 staffTimer = setTimeout(async () => {
                     if (staffRecognizer) {
                         await staffRecognizer.stopContinuousRecognitionAsync();
                         staffRecognizer.close();
+                        staffRecognizer.dispose();
                         staffRecognizer = null;
                     }
                     staffMicBtn.classList.remove('active');
@@ -439,6 +439,7 @@
                 if (staffRecognizer) {
                     await staffRecognizer.stopContinuousRecognitionAsync();
                     staffRecognizer.close();
+                    staffRecognizer.dispose();
                     staffRecognizer = null;
                 }
                 staffMicBtn.classList.remove('active');
@@ -449,11 +450,11 @@
         guestMicBtn.addEventListener('click', async () => {
             if (!isGuestListening) {
                 await startGuestRecognition();
-                // 타이머 시작
                 guestTimer = setTimeout(async () => {
                     if (guestRecognizer) {
                         await guestRecognizer.stopContinuousRecognitionAsync();
                         guestRecognizer.close();
+                        guestRecognizer.dispose();
                         guestRecognizer = null;
                     }
                     guestMicBtn.classList.remove('active');
@@ -465,6 +466,7 @@
                 if (guestRecognizer) {
                     await guestRecognizer.stopContinuousRecognitionAsync();
                     guestRecognizer.close();
+                    guestRecognizer.dispose();
                     guestRecognizer = null;
                 }
                 guestMicBtn.classList.remove('active');
@@ -480,12 +482,12 @@
             }
         });
 
-        // 언어 변경 시 인식기 재시작
         languageSelect.addEventListener('change', async () => {
             if (isGuestListening) {
                 if (guestRecognizer) {
                     await guestRecognizer.stopContinuousRecognitionAsync();
                     guestRecognizer.close();
+                    guestRecognizer.dispose();
                     guestRecognizer = null;
                 }
                 guestMicBtn.classList.remove('active');
