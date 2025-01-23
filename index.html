@@ -265,7 +265,7 @@
 
             // 프로토콜 및 호스트 설정
             speechConfig.setProperty("SPEECH-TranslationEndpointHostName", 
-                '${AZURE_REGION}.api.cognitive.microsoft.com');
+                'esatasia.api.cognitive.microsoft.com');
 
             return speechConfig;
         }
@@ -432,7 +432,7 @@
                     }
                     staffMicBtn.classList.remove('active');
                     isStaffListening = false;
-                    showError('3분이 경과하여 자동으로 종료되었습니다.');
+                    showError('30초가 경과하여 자동으로 종료되었습니다.');
                 }, RECORDING_TIMEOUT);
             } else {
                 clearTimeout(staffTimer);
