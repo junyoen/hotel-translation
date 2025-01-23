@@ -308,8 +308,10 @@
                     AZURE_REGION
                 );
 
+                // 한국어 인식 및 선택된 언어로 번역 설정
                 translationConfig.speechRecognitionLanguage = 'ko-KR';
                 translationConfig.addTargetLanguage(languageSelect.value);
+                translationConfig.setProperty("SPEECH-TranslationTimeoutInSeconds", "30");
                 
                 const audioConfig = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
                 staffRecognizer = new SpeechSDK.TranslationRecognizer(translationConfig, audioConfig);
