@@ -240,7 +240,6 @@
         const languageSelect = document.getElementById('guestLanguage');
         const chatContainer = document.getElementById('chatContainer');
         const errorMessage = document.getElementById('errorMessage');
-        const displayToggle = document.getElementById('displayToggle');
         const secondDisplay = document.getElementById('second-display');
         const translatedDisplay = document.getElementById('translatedDisplay');
 
@@ -265,7 +264,7 @@
 
             // 프로토콜 및 호스트 설정
             speechConfig.setProperty("SPEECH-TranslationEndpointHostName", 
-                'esatasia.api.cognitive.microsoft.com');
+                'eastasia.api.cognitive.microsoft.com');
 
             return speechConfig;
         }
@@ -305,7 +304,7 @@
                 console.log('마이크 권한 획득 성공');
 
                 const translationConfig = SpeechSDK.SpeechTranslationConfig.fromSubscription(
-                    AZURE_KEY
+                    AZURE_KEY,
                     AZURE_REGION
                 );
 
@@ -475,14 +474,6 @@
                 }
                 guestMicBtn.classList.remove('active');
                 isGuestListening = false;
-            }
-        });
-
-        displayToggle.addEventListener('click', () => {
-            if (secondDisplay.style.display === 'none') {
-                secondDisplay.style.display = 'block';
-            } else {
-                secondDisplay.style.display = 'none';
             }
         });
 
