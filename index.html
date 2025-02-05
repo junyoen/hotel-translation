@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>양방향향 호텔 통역 시스템</title>
+    <title>양방향 호텔 통역 시스템</title>
     <script src="https://cdn.jsdelivr.net/npm/microsoft-cognitiveservices-speech-sdk@1.31.0/distrib/browser/microsoft.cognitiveservices.speech.sdk.bundle.js"></script>
     <style>
         * {
@@ -359,8 +359,15 @@
                 console.log('마이크 권한 획득 성공');
 
                 const speechConfig = createSpeechConfig();
-                speechConfig.speechRecognitionLanguage = languageSelect.value + '-' + 
-                    getCountryCode(languageSelect.value);
+
+                // 중국어 특별 처리
+                if (languageSelect.value === 'zh') {
+                    speechConfig.speechRecognitionLanguage = 'zh-CN';
+                } else {
+                    speechConfig.speechRecognitionLanguage = languageSelect.value + '-' +
+                        getCountryCode(languageSelect.value);
+                }
+
                 speechConfig.addTargetLanguage('ko');
                 
                 const audioConfig = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
