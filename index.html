@@ -144,20 +144,6 @@
             z-index: 1000;
         }
 
-        .display-toggle {
-            padding: 10px 20px;
-            border-radius: 20px;
-            border: none;
-            background-color: #666;
-            color: white;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-        }
-
-        .display-toggle:hover {
-            background-color: #555;
-        }
-
         #second-display {
             display: none;
             position: fixed;
@@ -195,11 +181,11 @@
     <div class="container">
         <div class="controls">
             <select id="guestLanguage" class="language-select">
-                <option value="ja-JP">日本語</option>
-                <option value="zh-CN">中文</option>
-                <option value="th-TH">ไทย</option>
-                <option value="en-US">English</option>
-                <option value="ru-RU">Русский</option>
+                <option value="ja">日本語</option>
+                <option value="zh">中文</option>
+                <option value="th">ไทย</option>
+                <option value="en">English</option>
+                <option value="ru">Русский</option>
             </select>
             <div class="mic-buttons">
                 <button id="staffMic" class="mic-button staff">
@@ -217,6 +203,7 @@
     <div id="second-display">
         <div class="translated-display" id="translatedDisplay"></div>
     </div>
+
     <script>
         // 전역 변수 설정
         let isStaffListening = false;
@@ -228,8 +215,8 @@
         const AZURE_KEY = "CWvn2DcbqROlB5iMZ6ryaTGpF8CUIN02f0qchrGm4KmIWoA619GBJQQJ99BAAC3pKaRXJ3w3AAAYACOG0r1C";
         const AZURE_REGION = "eastasia";
 
-        // 타이머 설정 추가
-        const RECORDING_TIMEOUT = 30000; // 30초초
+        // 타이머 설정
+        const RECORDING_TIMEOUT = 30000; // 30초
         let staffTimer = null;
         let guestTimer = null;
 
@@ -241,32 +228,6 @@
         const errorMessage = document.getElementById('errorMessage');
         const secondDisplay = document.getElementById('second-display');
         const translatedDisplay = document.getElementById('translatedDisplay');
-
-        // Azure Speech Service 설정 함수
-        function createSpeechConfig() {
-            const speechConfig = SpeechSDK.SpeechTranslationConfig.fromSubscription(
-                AZURE_KEY,
-                AZURE_REGION
-            );
-
-            // 추가 보안 및 연결 설정
-            speechConfig.setProperty("SPEECH-ServiceConnectionStartTime", Date.now().toString());
-            speechConfig.setProperty("SPEECH-SecurityToken", AZURE_KEY);
-
-            // 연결 재시도 설정
-            speechConfig.setProperty("SPEECH-RetryCount", "3");
-            speechConfig.setProperty("SPEECH-RetryIntervalInMilliseconds", "500");
-
-            // 타임아웃 설정
-            speechConfig.setProperty("SPEECH-ConnectionTimeoutInSeconds", "30");
-            speechConfig.setProperty("SPEECH-TranslationTimeoutInSeconds", "30");
-
-            // 프로토콜 및 호스트 설정
-            speechConfig.setProperty("SPEECH-TranslationEndpointHostName", 
-                'eastasia.api.cognitive.microsoft.com');
-
-            return speechConfig;
-        }
 
         // 메시지 추가 함수
         function addMessage(type, original, translated) {
@@ -306,14 +267,9 @@
                     AZURE_KEY,
                     AZURE_REGION
                 );
-
-                // 한국어 인식 및 선택된 언어로 번역 설정
+                
                 translationConfig.speechRecognitionLanguage = 'ko-KR';
-
-                let targetLanguage = languageSelect.value.split('-')[0];
-                translationConfig.addTargetLanguage(targetLanguage);
-
-                translationConfig.setProperty("SPEECH-TranslationTimeoutInSeconds", "30");
+                translationConfig.addTargetLanguage(languageSelect.value);
                 
                 const audioConfig = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
                 staffRecognizer = new SpeechSDK.TranslationRecognizer(translationConfig, audioConfig);
@@ -366,8 +322,9 @@
                     AZURE_REGION
                 );
 
-                translationConfig.speechRecognitionLanguage = languageSelect.value;
-                translationConfig.addTargetLanguage('ko')
+                translationConfig.speechRecognitionLanguage = languageSelect.value + '-' + 
+                    getCountryCode(languageSelect.value);
+                translationConfig.addTargetLanguage('ko');
                 
                 const audioConfig = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
                 guestRecognizer = new SpeechSDK.TranslationRecognizer(translationConfig, audioConfig);
@@ -405,6 +362,18 @@
                 console.error('고객 음성 인식 초기화 오류:', err);
                 showError('고객 음성 인식 오류: ' + err.message);
             }
+        }
+
+        // 국가 코드 가져오기
+        function getCountryCode(language) {
+            const countryMap = {
+                'ja': 'JP',
+                'zh': 'CN',
+                'th': 'TH',
+                'en': 'US',
+                'ru': 'RU'
+            };
+            return countryMap[language] || 'US';
         }
 
         // 에러 메시지 표시
@@ -457,36 +426,36 @@
                     guestMicBtn.classList.remove('active');
                     isGuestListening = false;
                     showError('30초가 경과하여 자동으로 종료되었습니다.');
-                }, RECORDING_TIMEOUT);
-            } else {
-                clearTimeout(guestTimer);
-                if (guestRecognizer) {
-                    await guestRecognizer.stopContinuousRecognitionAsync();
-                    guestRecognizer.close();
-                    guestRecognizer.dispose();
-                    guestRecognizer = null;
-                }
-                guestMicBtn.classList.remove('active');
-                isGuestListening = false;
-            }
-        });
+               }, RECORDING_TIMEOUT);
+           } else {
+               clearTimeout(guestTimer);
+               if (guestRecognizer) {
+                   await guestRecognizer.stopContinuousRecognitionAsync();
+                   guestRecognizer.close();
+                   guestRecognizer.dispose();
+                   guestRecognizer = null;
+               }
+               guestMicBtn.classList.remove('active');
+               isGuestListening = false;
+           }
+       });
 
-        languageSelect.addEventListener('change', async () => {
-            if (isGuestListening) {
-                if (guestRecognizer) {
-                    await guestRecognizer.stopContinuousRecognitionAsync();
-                    guestRecognizer.close();
-                    guestRecognizer.dispose();
-                    guestRecognizer = null;
-                }
-                guestMicBtn.classList.remove('active');
-                isGuestListening = false;
-                await startGuestRecognition();
-            }
-        });
+       languageSelect.addEventListener('change', async () => {
+           if (isGuestListening) {
+               if (guestRecognizer) {
+                   await guestRecognizer.stopContinuousRecognitionAsync();
+                   guestRecognizer.close();
+                   guestRecognizer.dispose();
+                   guestRecognizer = null;
+               }
+               guestMicBtn.classList.remove('active');
+               isGuestListening = false;
+               await startGuestRecognition();
+           }
+       });
 
-        // 초기 화면 설정
-        secondDisplay.style.display = 'none';
-    </script>
+       // 초기 화면 설정
+       secondDisplay.style.display = 'none';
+   </script>
 </body>
 </html>
