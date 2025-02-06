@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>양방향 호텔 통역 시스템</title>
+    <title>황평항 호텔 통역 시스템</title>
     <script src="https://cdn.jsdelivr.net/npm/microsoft-cognitiveservices-speech-sdk@1.31.0/distrib/browser/microsoft.cognitiveservices.speech.sdk.bundle.js"></script>
     <style>
         * {
@@ -144,6 +144,20 @@
             z-index: 1000;
         }
 
+        .display-toggle {
+            padding: 10px 20px;
+            border-radius: 20px;
+            border: none;
+            background-color: #666;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .display-toggle:hover {
+            background-color: #555;
+        }
+
         #second-display {
             display: none;
             position: fixed;
@@ -177,22 +191,26 @@
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <div class="controls">
             <select id="guestLanguage" class="language-select">
-                <option value="ja-JP">日本語</option>
-                <option value="zh-CN">中文</option>
-                <option value="th-TH">ไทย</option>
-                <option value="en-US">English</option>
-                <option value="ru-RU">Русский</option>
+                <option value="ja">日本語</option>
+                <option value="zh">中文</option>
+                <option value="th">ไทย</option>
+                <option value="en">English</option>
+                <option value="ru">Русский</option>
             </select>
             <div class="mic-buttons">
                 <button id="staffMic" class="mic-button staff">
-                    🎤 STAFF
+                    🎤 직원
                 </button>
                 <button id="guestMic" class="mic-button guest">
-                    🎤 GUEST
+                    🎤 고객
+                </button>
+                <button id="displayToggle" class="display-toggle">
+                    🖥️ 화면 전환
                 </button>
             </div>
         </div>
@@ -204,7 +222,7 @@
         <div class="translated-display" id="translatedDisplay"></div>
     </div>
 
-    <script>
+<script>
         // 전역 변수 설정
         let isStaffListening = false;
         let isGuestListening = false;
@@ -215,24 +233,11 @@
         const AZURE_KEY = "CWvn2DcbqROlB5iMZ6ryaTGpF8CUIN02f0qchrGm4KmIWoA619GBJQQJ99BAAC3pKaRXJ3w3AAAYACOG0r1C";
         const AZURE_REGION = "eastasia";
 
-        // Azure Speech Serivce 설정 함수
-        function createSpeechConfig() {
-            const speechConfig = SpeechSDK.SpeechTranslationConfig.fromSubscription(
-                AZURE_KEY,
-                AZURE_REGION
-            );
-
-            // 연결 재시도 및 다임아웃 설정
-            speechConfig.setProperty("SPEECH-RetryCount", "3");
-            speechConfig.setProperty("SPEECH-RetryIntervalInMilliseconds","500");
-
-            return speechConfig;    
-        }
-
-        // 타이머 설정
-        const RECORDING_TIMEOUT = 30000; // 30초
+        // 타이머 설정 추가
+        const RECORDING_TIMEOUT = 30000; // 30초초
         let staffTimer = null;
         let guestTimer = null;
+
 
         // DOM 요소
         const staffMicBtn = document.getElementById('staffMic');
@@ -240,8 +245,26 @@
         const languageSelect = document.getElementById('guestLanguage');
         const chatContainer = document.getElementById('chatContainer');
         const errorMessage = document.getElementById('errorMessage');
+        const displayToggle = document.getElementById('displayToggle');
         const secondDisplay = document.getElementById('second-display');
         const translatedDisplay = document.getElementById('translatedDisplay');
+
+        // Azure Speech Service 설정 함수
+        function createSpeechConfig() {
+            const speechConfig = SpeechSDK.SpeechTranslationConfig.fromSubscription(
+                AZURE_KEY,
+                AZURE_REGION
+            );
+
+            // 추가 보안 및 연결 설정
+            speechConfig.setProperty("SPEECH-SecurityProtocol", "TLS12");
+            speechConfig.setProperty("SPEECH-ConnectionTimeoutInSeconds", "20");
+            speechConfig.setProperty("SPEECH-TranslationTimeoutInSeconds", "20");
+            speechConfig.setServiceProperty("apiversion", "2023-10-15", 
+                SpeechSDK.ServicePropertyChannel.UriQueryParameter);
+
+            return speechConfig;
+        }
 
         // 메시지 추가 함수
         function addMessage(type, original, translated) {
@@ -273,22 +296,26 @@
         async function startStaffRecognition() {
             try {
                 console.log('직원 음성 인식 시작 시도');
-        
-                const translationConfig = createSpeechConfig();
-                translationConfig.speechRecognitionLanguage = 'ko-KR';
-                translationConfig.addTargetLanguage(languageSelect.value.split('-')[0]); // 언어 코드만 사용
-        
+                
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                console.log('마이크 권한 획득 성공');
+
+                const speechConfig = createSpeechConfig();
+                speechConfig.speechRecognitionLanguage = 'ko-KR';
+                speechConfig.addTargetLanguage(languageSelect.value);
+                
                 const audioConfig = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
-                staffRecognizer = new SpeechSDK.TranslationRecognizer(translationConfig, audioConfig);
+                staffRecognizer = new SpeechSDK.TranslationRecognizer(speechConfig, audioConfig);
 
                 staffRecognizer.recognizing = (s, e) => {
                     console.log('인식 중:', e.result.text);
                 };
-        
+                
                 staffRecognizer.recognized = (s, e) => {
+                    console.log('음성 인식 결과:', e.result);
                     if (e.result.reason === SpeechSDK.ResultReason.TranslatedSpeech) {
                         const original = e.result.text;
-                        const translated = e.result.translations.get(languageSelect.value.split('-')[0]);
+                        const translated = e.result.translations.get(languageSelect.value);
                         console.log('원본:', original);
                         console.log('번역:', translated);
                         addMessage('staff', original, translated);
@@ -306,9 +333,9 @@
 
                 await staffRecognizer.startContinuousRecognitionAsync();
                 console.log('음성 인식 시작됨');
+                
                 staffMicBtn.classList.add('active');
                 isStaffListening = true;
-
             } catch (err) {
                 console.error('음성 인식 초기화 오류:', err);
                 showError('음성 인식 오류: ' + err.message);
@@ -319,13 +346,17 @@
         async function startGuestRecognition() {
             try {
                 console.log('고객 음성 인식 시작 시도');
-        
-                const translationConfig = createSpeechConfig();
-                translationConfig.speechRecognitionLanguage = languageSelect.value;
-                translationConfig.addTargetLanguage('ko');
-        
+
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                console.log('마이크 권한 획득 성공');
+
+                const speechConfig = createSpeechConfig();
+                speechConfig.speechRecognitionLanguage = languageSelect.value + '-' + 
+                    getCountryCode(languageSelect.value);
+                speechConfig.addTargetLanguage('ko');
+                
                 const audioConfig = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
-                guestRecognizer = new SpeechSDK.TranslationRecognizer(translationConfig, audioConfig);
+                guestRecognizer = new SpeechSDK.TranslationRecognizer(speechConfig, audioConfig);
 
                 guestRecognizer.recognizing = (s, e) => {
                     console.log('인식 중:', e.result.text);
@@ -353,10 +384,9 @@
 
                 await guestRecognizer.startContinuousRecognitionAsync();
                 console.log('고객 음성 인식 시작됨');
-        
+                
                 guestMicBtn.classList.add('active');
                 isGuestListening = true;
-        
             } catch (err) {
                 console.error('고객 음성 인식 초기화 오류:', err);
                 showError('고객 음성 인식 오류: ' + err.message);
@@ -370,14 +400,13 @@
                 'zh': 'CN',
                 'th': 'TH',
                 'en': 'US',
-                'ru': 'RU'
+                'ru': 'RU',
             };
             return countryMap[language] || 'US';
         }
 
         // 에러 메시지 표시
         function showError(message) {
-            console.error('Error:', message);
             errorMessage.textContent = message;
             errorMessage.style.display = 'block';
             setTimeout(() => {
@@ -389,11 +418,11 @@
         staffMicBtn.addEventListener('click', async () => {
             if (!isStaffListening) {
                 await startStaffRecognition();
+                // 타이머 시작
                 staffTimer = setTimeout(async () => {
                     if (staffRecognizer) {
                         await staffRecognizer.stopContinuousRecognitionAsync();
                         staffRecognizer.close();
-                        staffRecognizer.dispose();
                         staffRecognizer = null;
                     }
                     staffMicBtn.classList.remove('active');
@@ -405,7 +434,6 @@
                 if (staffRecognizer) {
                     await staffRecognizer.stopContinuousRecognitionAsync();
                     staffRecognizer.close();
-                    staffRecognizer.dispose();
                     staffRecognizer = null;
                 }
                 staffMicBtn.classList.remove('active');
@@ -416,46 +444,45 @@
         guestMicBtn.addEventListener('click', async () => {
             if (!isGuestListening) {
                 await startGuestRecognition();
+                // 타이머 시작
                 guestTimer = setTimeout(async () => {
                     if (guestRecognizer) {
                         await guestRecognizer.stopContinuousRecognitionAsync();
                         guestRecognizer.close();
-                        guestRecognizer.dispose();
                         guestRecognizer = null;
                     }
                     guestMicBtn.classList.remove('active');
                     isGuestListening = false;
                     showError('30초가 경과하여 자동으로 종료되었습니다.');
-               }, RECORDING_TIMEOUT);
-           } else {
-               clearTimeout(guestTimer);
-               if (guestRecognizer) {
-                   await guestRecognizer.stopContinuousRecognitionAsync();
-                   guestRecognizer.close();
-                   guestRecognizer.dispose();
-                   guestRecognizer = null;
-               }
-               guestMicBtn.classList.remove('active');
-               isGuestListening = false;
-           }
-       });
+                }, RECORDING_TIMEOUT);
+            } else {
+                clearTimeout(guestTimer);
+                if (guestRecognizer) {
+                    await guestRecognizer.stopContinuousRecognitionAsync();
+                    guestRecognizer.close();
+                    guestRecognizer = null;
+                }
+                guestMicBtn.classList.remove('active');
+                isGuestListening = false;
+            }
+        });
 
-       languageSelect.addEventListener('change', async () => {
-           if (isGuestListening) {
-               if (guestRecognizer) {
-                   await guestRecognizer.stopContinuousRecognitionAsync();
-                   guestRecognizer.close();
-                   guestRecognizer.dispose();
-                   guestRecognizer = null;
-               }
-               guestMicBtn.classList.remove('active');
-               isGuestListening = false;
-               await startGuestRecognition();
-           }
-       });
+        // 언어 변경 시 인식기 재시작
+        languageSelect.addEventListener('change', async () => {
+            if (isGuestListening) {
+                if (guestRecognizer) {
+                    await guestRecognizer.stopContinuousRecognitionAsync();
+                    guestRecognizer.close();
+                    guestRecognizer = null;
+                }
+                guestMicBtn.classList.remove('active');
+                isGuestListening = false;
+                await startGuestRecognition();
+            }
+        });
 
-       // 초기 화면 설정
-       secondDisplay.style.display = 'none';
-   </script>
+        // 초기 화면 설정
+        secondDisplay.style.display = 'none';
+    </script>
 </body>
 </html>
