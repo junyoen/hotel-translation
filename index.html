@@ -222,14 +222,9 @@
                 AZURE_REGION
             );
 
-            // 추가 설정
-            speechConfig.setProperty("SpeechServiceConnection_TranslationVoice", "native");
-            speechConfig.setProperty("SpeechServiceConnection_SingleLanguageIdentification", "true");
-
             // 연결 재시도 및 다임아웃 설정
             speechConfig.setProperty("SPEECH-RetryCount", "3");
             speechConfig.setProperty("SPEECH-RetryIntervalInMilliseconds","500");
-            speechConfig.setProperty("SPEECH-TranslationTimeoutInSeconds", "30");
 
             return speechConfig;    
         }
@@ -284,11 +279,11 @@
 
                 const translationConfig = createSpeechConfig();  // createSpeechConfig 함수 사용
                 
-                translationConfig.speechRecognitionLanguage = 'ko-KR';
-                translationConfig.addTargetLanguage(languageSelect.value);
+                translationConfig.speechRecognitionLanguage = languageSelect.value;
+                translationConfig.addTargetLanguage('ko');  // 'ko-KR' 대신 'ko' 사용
                 
                 const audioConfig = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
-                staffRecognizer = new SpeechSDK.TranslationRecognizer(translationConfig, audioConfig);
+                guestRecognizer = new SpeechSDK.TranslationRecognizer(translationConfig, audioConfig);
 
                 staffRecognizer.recognizing = (s, e) => {
                     console.log('인식 중:', e.result.text);
@@ -334,7 +329,7 @@
                 console.log('마이크 권한 획득 성공');
 
                 const translationConfig = createSpeechConfig();
-                
+
                 // 선택된 언어 코드를 직접 사용
                 translationConfig.speechRecognitionLanguage = languageSelect.value;
                 translationConfig.addTargetLanguage('ko-KR');
