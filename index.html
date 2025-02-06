@@ -204,14 +204,10 @@
             </select>
             <div class="mic-buttons">
                 <button id="staffMic" class="mic-button staff">
-                    🎤 직원
+                    🎤 Staff
                 </button>
                 <button id="guestMic" class="mic-button guest">
-                    🎤 고객
-                </button>
-                <button id="displayToggle" class="display-toggle">
-                    🖥️ 화면 전환
-                </button>
+                    🎤 Guest
             </div>
         </div>
         <div id="chatContainer" class="chat-container"></div>
@@ -234,7 +230,7 @@
         const AZURE_REGION = "eastasia";
 
         // 타이머 설정 추가
-        const RECORDING_TIMEOUT = 30000; // 30초초
+        const RECORDING_TIMEOUT = 30000; // 30초
         let staffTimer = null;
         let guestTimer = null;
 
