@@ -358,32 +358,13 @@
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 console.log('마이크 권한 획득 성공');
 
-                const speechConfig = createSpeechConfig();
+                const translationConfig = SpeechSDK.SpeechTranslationConfig.fromSubscription(
+                    AZURE_KEY,
+                    AZURE_REGION
+                );
 
-                // 언어별 올바른 코드 설정정
-                let recognitionLanguage;
-                switch(languageSelect.value) {
-                    case 'ja':
-                        recognitionLanguage = 'ja-JP'
-                        break;
-                    case 'zh':
-                        recognitionLanguage = 'zh-CN'
-                        break;
-                    case 'th':
-                        recognitionLanguage = 'th-TH'
-                        break;
-                    case 'en':
-                        recognitionLanguage = 'en-US'
-                        break;
-                    case 'ru':
-                        recognitionLanguage = 'ru-RU'
-                        break;
-                    default:
-                        recognitionLanguage = 'en-US';
-                }
-
-                speechConfig.speechRecognitionLanguage = recognitionLanguage;
-                speechConfig.addTargetLanguage('ko');
+                translationConfig.speechRecognitionLanguage = languageSelect.value;
+                translationConfig.addTargetLanguage('ko')
                 
                 const audioConfig = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
                 guestRecognizer = new SpeechSDK.TranslationRecognizer(speechConfig, audioConfig);
