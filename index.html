@@ -309,7 +309,10 @@
 
                 // 한국어 인식 및 선택된 언어로 번역 설정
                 translationConfig.speechRecognitionLanguage = 'ko-KR';
-                translationConfig.addTargetLanguage(languageSelect.value);
+
+                let targetLanguage = languageSelect.value.split('-')[0];
+                translationConfig.addTargetLanguage(targetLanguage);
+
                 translationConfig.setProperty("SPEECH-TranslationTimeoutInSeconds", "30");
                 
                 const audioConfig = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
@@ -367,7 +370,7 @@
                 translationConfig.addTargetLanguage('ko')
                 
                 const audioConfig = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
-                guestRecognizer = new SpeechSDK.TranslationRecognizer(speechConfig, audioConfig);
+                guestRecognizer = new SpeechSDK.TranslationRecognizer(translationConfig, audioConfig);
 
                 guestRecognizer.recognizing = (s, e) => {
                     console.log('인식 중:', e.result.text);
