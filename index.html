@@ -196,11 +196,11 @@
     <div class="container">
         <div class="controls">
             <select id="guestLanguage" class="language-select">
-                <option value="ja">日本語</option>
-                <option value="zh">中文</option>
-                <option value="th">ไทย</option>
-                <option value="en">English</option>
-                <option value="ru">Русский</option>
+                <option value="ja-JP">日本語</option>
+                <option value="zh-CN">中文</option>
+                <option value="th-TH">ไทย</option>
+                <option value="en-US">English</option>
+                <option value="ru-RU">Русский</option>
             </select>
             <div class="mic-buttons">
                 <button id="staffMic" class="mic-button staff">
@@ -297,12 +297,20 @@
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 console.log('마이크 권한 획득 성공');
 
-                const speechConfig = createSpeechConfig();
-                speechConfig.speechRecognitionLanguage = 'ko-KR';
-                speechConfig.addTargetLanguage(languageSelect.value);
+                const translationConfig = SpeechSDK.SpeechTranslationConfig.fromSubscription(
+                    AZURE_KEY,
+                    AZURE_REGION
+                );
+
+                // 한국어 인식 및 선택된 언어로 번역 설정
+                translationConfig.speechRecognitionLanguage = 'ko-KR';
+
+                // 선택된 언어에 따라 적절한 언어 코드 설정
+                const targetLang = languageSelect.value.split('-')[0];
+                translationConfig.addTargetLanguage(targetLang);
                 
                 const audioConfig = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
-                staffRecognizer = new SpeechSDK.TranslationRecognizer(speechConfig, audioConfig);
+                staffRecognizer = new SpeechSDK.TranslationRecognizer(translationConfig, audioConfig);
 
                 staffRecognizer.recognizing = (s, e) => {
                     console.log('인식 중:', e.result.text);
@@ -312,10 +320,12 @@
                     console.log('음성 인식 결과:', e.result);
                     if (e.result.reason === SpeechSDK.ResultReason.TranslatedSpeech) {
                         const original = e.result.text;
-                        const translated = e.result.translations.get(languageSelect.value);
+                        const translated = e.result.translations.get(targetLang);
                         console.log('원본:', original);
                         console.log('번역:', translated);
-                        addMessage('staff', original, translated);
+                        if (translated) {
+                            addMessage('staff', original, translated);
+                        }
                     }
                 };
 
@@ -347,13 +357,17 @@
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 console.log('마이크 권한 획득 성공');
 
-                const speechConfig = createSpeechConfig();
-                speechConfig.speechRecognitionLanguage = languageSelect.value + '-' + 
-                    getCountryCode(languageSelect.value);
-                speechConfig.addTargetLanguage('ko');
+                const translationConfig = SpeechSDK.SpeechTranslationConfig.fromSubscription(
+                    AZURE_KEY,
+                    AZURE_REGION
+                );
+
+                // 선택된 언어 설정
+                translationConfig.speechRecognitionLanguage = languageSelect.value;
+                translationConfig.addTargetLanguage('ko');
                 
                 const audioConfig = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
-                guestRecognizer = new SpeechSDK.TranslationRecognizer(speechConfig, audioConfig);
+                guestRecognizer = new SpeechSDK.TranslationRecognizer(translationConfig, audioConfig);
 
                 guestRecognizer.recognizing = (s, e) => {
                     console.log('인식 중:', e.result.text);
@@ -366,7 +380,9 @@
                         const translated = e.result.translations.get('ko');
                         console.log('원본:', original);
                         console.log('번역:', translated);
-                        addMessage('guest', original, translated);
+                        if (translated) {
+                            addMessage('guest', original, translated);
+                        }
                     }
                 };
 
@@ -388,18 +404,6 @@
                 console.error('고객 음성 인식 초기화 오류:', err);
                 showError('고객 음성 인식 오류: ' + err.message);
             }
-        }
-
-        // 국가 코드 가져오기
-        function getCountryCode(language) {
-            const countryMap = {
-                'ja': 'JP',
-                'zh': 'CN',
-                'th': 'TH',
-                'en': 'US',
-                'ru': 'RU',
-            };
-            return countryMap[language] || 'US';
         }
 
         // 에러 메시지 표시
