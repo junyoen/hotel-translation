@@ -305,9 +305,21 @@
                 // 한국어 인식 및 선택된 언어로 번역 설정
                 translationConfig.speechRecognitionLanguage = 'ko-KR';
 
-                // 선택된 언어에 따라 적절한 언어 코드 설정
-                const targetLang = languageSelect.value.split('-')[0];
-                translationConfig.addTargetLanguage(targetLang);
+                // 선택된 언어에 대한 처리
+                const selectedLanguage = languageSelect.value;
+                console.log('선택된 언어:', selectedLanguage);
+
+                //중국어인 경우 'zh-CN' 을 'zh-Hans'로 변환
+                let targetLanguage = selectedLanguage;
+                if (selectedLanguage === 'zh-CN') {
+                    targetLanguage = 'zh-Hans';
+                } else {
+                    // 다른 언어는 국가 코드 제거 (예: 'jp-JP'->'ja')
+                    targetLanguage = selectedLanguage.split('-')[0];
+                }
+
+                console.log('번역 대상 언어:', targetLanguage);
+                translationConfig.addTargetLanguage(targetLanguage);
                 
                 const audioConfig = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
                 staffRecognizer = new SpeechSDK.TranslationRecognizer(translationConfig, audioConfig);
@@ -320,11 +332,15 @@
                     console.log('음성 인식 결과:', e.result);
                     if (e.result.reason === SpeechSDK.ResultReason.TranslatedSpeech) {
                         const original = e.result.text;
-                        const translated = e.result.translations.get(targetLang);
+                        const translated = e.result.translations.get(targetLanguage);
                         console.log('원본:', original);
                         console.log('번역:', translated);
+                        console.log('사용된 target 언어:', targetLanguage);
                         if (translated) {
                             addMessage('staff', original, translated);
+                        } else {
+                            console.error('번역 결과가 없습니다.');
+                            showError('번역 결과를 받아오지 못했습니다.');
                         }
                     }
                 };
