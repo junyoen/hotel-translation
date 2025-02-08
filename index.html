@@ -354,8 +354,15 @@
                 console.log('마이크 권한 획득 성공');
 
                 const speechConfig = createSpeechConfig();
-                speechConfig.speechRecognitionLanguage = languageSelect.value + '-' + 
-                    getCountryCode(languageSelect.value);
+
+                // 중국어의 경우 'zh-CN' 을 사용하고, 다른 언어는 기존 형식을 유지
+                if (languageSelect.value === 'zh-Hans') {
+                    speechConfig.speechRecognitionLanguage = 'zh-CN';
+                } else {
+                    speechConfig.speechRecognitionLanguage = languageSelect.value + '-' +
+                        getCountryCode(languageSelect.value);
+                }
+
                 speechConfig.addTargetLanguage('ko');
                 
                 const audioConfig = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
