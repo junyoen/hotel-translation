@@ -197,17 +197,21 @@
         <div class="controls">
             <select id="guestLanguage" class="language-select">
                 <option value="ja">日本語</option>
-                <option value="zh-Hans">中文</option>
+                <option value="zh">中文</option>
                 <option value="th">ไทย</option>
                 <option value="en">English</option>
                 <option value="ru">Русский</option>
             </select>
             <div class="mic-buttons">
                 <button id="staffMic" class="mic-button staff">
-                    🎤 Staff
+                    🎤 직원
                 </button>
                 <button id="guestMic" class="mic-button guest">
-                    🎤 Guest
+                    🎤 고객
+                </button>
+                <button id="displayToggle" class="display-toggle">
+                    🖥️ 화면 전환
+                </button>
             </div>
         </div>
         <div id="chatContainer" class="chat-container"></div>
@@ -230,7 +234,7 @@
         const AZURE_REGION = "eastasia";
 
         // 타이머 설정 추가
-        const RECORDING_TIMEOUT = 30000; // 30초
+        const RECORDING_TIMEOUT = 30000; // 30초초
         let staffTimer = null;
         let guestTimer = null;
 
@@ -296,18 +300,12 @@
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 console.log('마이크 권한 획득 성공');
 
-                const translationConfig = createSpeechConfig();
-                translationConfig.speechRecognitionLanguage = 'ko-KR';
-
-                // 중국어 처리를 위한 조건 추가
-                if (languageSelect.value === 'zh-Hans') {
-                    translationConfig.addTargetLanguage('zh-Hans');
-                } else {
-                    translationConfig.addTargetLanguage(languageSelect.value);
-                }
+                const speechConfig = createSpeechConfig();
+                speechConfig.speechRecognitionLanguage = 'ko-KR';
+                speechConfig.addTargetLanguage(languageSelect.value);
                 
                 const audioConfig = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
-                staffRecognizer = new SpeechSDK.TranslationRecognizer(translationConfig, audioConfig);
+                staffRecognizer = new SpeechSDK.TranslationRecognizer(speechConfig, audioConfig);
 
                 staffRecognizer.recognizing = (s, e) => {
                     console.log('인식 중:', e.result.text);
@@ -315,18 +313,9 @@
                 
                 staffRecognizer.recognized = (s, e) => {
                     console.log('음성 인식 결과:', e.result);
-                    console.log('번역 맵:', e.result.translations);  // 추가
-                    console.log('사용 가능한 번역 키:', Array.from(e.result.translations.keys()));  // 추가
-                    console.log('모든 번역 결과:', {
-                        original: e.result.text,
-                        translations: Object.fromEntries(e.result.translations)
-                    });  // 추가
-
                     if (e.result.reason === SpeechSDK.ResultReason.TranslatedSpeech) {
                         const original = e.result.text;
-                        const translated = languageSelect.value === 'zh-Hans'
-                            ? e.result.translations.get('zh-Hans')
-                            : e.result.translations.get(languageSelect.value);
+                        const translated = e.result.translations.get(languageSelect.value);
                         console.log('원본:', original);
                         console.log('번역:', translated);
                         addMessage('staff', original, translated);
@@ -362,15 +351,8 @@
                 console.log('마이크 권한 획득 성공');
 
                 const speechConfig = createSpeechConfig();
-
-                // 중국어의 경우 'zh-CN' 을 사용하고, 다른 언어는 기존 형식을 유지
-                if (languageSelect.value === 'zh-Hans') {
-                    speechConfig.speechRecognitionLanguage = 'zh-CN';
-                } else {
-                    speechConfig.speechRecognitionLanguage = languageSelect.value + '-' +
-                        getCountryCode(languageSelect.value);
-                }
-
+                speechConfig.speechRecognitionLanguage = languageSelect.value + '-' + 
+                    getCountryCode(languageSelect.value);
                 speechConfig.addTargetLanguage('ko');
                 
                 const audioConfig = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
@@ -415,7 +397,7 @@
         function getCountryCode(language) {
             const countryMap = {
                 'ja': 'JP',
-                'zh-Hans': 'CN',
+                'zh': 'CN',
                 'th': 'TH',
                 'en': 'US',
                 'ru': 'RU',
