@@ -309,6 +309,13 @@
                 
                 staffRecognizer.recognized = (s, e) => {
                     console.log('음성 인식 결과:', e.result);
+                    console.log('번역 맵:', e.result.translations);  // 추가
+                    console.log('사용 가능한 번역 키:', Array.from(e.result.translations.keys()));  // 추가
+                    console.log('모든 번역 결과:', {
+                        original: e.result.text,
+                        translations: Object.fromEntries(e.result.translations)
+                    });  // 추가
+                    
                     if (e.result.reason === SpeechSDK.ResultReason.TranslatedSpeech) {
                         const original = e.result.text;
                         const translated = e.result.translations.get(languageSelect.value);
