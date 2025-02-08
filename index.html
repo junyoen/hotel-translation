@@ -296,12 +296,18 @@
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 console.log('마이크 권한 획득 성공');
 
-                const speechConfig = createSpeechConfig();
-                speechConfig.speechRecognitionLanguage = 'ko-KR';
-                speechConfig.addTargetLanguage(languageSelect.value);
+                const translationConfig = createSpeechConfig();
+                translationConfig.speechRecognitionLanguage = 'ko-KR';
+
+                // 중국어 처리를 위한 조건 추가
+                if (languageSelect.value === 'zh-Hans') {
+                    translationConfig.addTargetLanguage('zh-Hans');
+                } else {
+                    translationConfig.addTargetLanguage(languageSelect.value);
+                }
                 
                 const audioConfig = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
-                staffRecognizer = new SpeechSDK.TranslationRecognizer(speechConfig, audioConfig);
+                staffRecognizer = new SpeechSDK.TranslationRecognizer(translationConfig, audioConfig);
 
                 staffRecognizer.recognizing = (s, e) => {
                     console.log('인식 중:', e.result.text);
@@ -318,7 +324,9 @@
 
                     if (e.result.reason === SpeechSDK.ResultReason.TranslatedSpeech) {
                         const original = e.result.text;
-                        const translated = e.result.translations.get(languageSelect.value);
+                        const translated = languageSelect.value === 'zh-Hans'
+                            ? e.result.translations.get('zh-Hans')
+                            : e.result.translations.get(languageSelect.value);
                         console.log('원본:', original);
                         console.log('번역:', translated);
                         addMessage('staff', original, translated);
